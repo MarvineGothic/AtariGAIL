@@ -1,0 +1,16 @@
+
+# andrewliao
+OBSERVATIONS = 'ob'
+ACTIONS = 'ac'
+REWARDS = 'rew'
+DONE = 'new'
+PREDICTED_VALUES = 'vpred'
+PREVIOUS_ACTIONS = 'prevac'
+NEXT_VALUE_PREDICTED = 'nextvpred'
+EPISODE_RETURNS = 'ep_ret'
+EPISODE_LENGTHS = 'ep_lens'
+EPISODE_TRUE_RETURNS = 'ep_true_rets'
+ADVANTAGE = 'adv'
+TD_LAMBDA_RETURN = 'tdlamret'
+PI = 'pi'
+OLD_PI = 'oldpi'
