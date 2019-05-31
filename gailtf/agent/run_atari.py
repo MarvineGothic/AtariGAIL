@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# https://github.com/andrewliao11/gail-tf
 import logging
 import os.path as osp
 import sys
