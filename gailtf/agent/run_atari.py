@@ -114,8 +114,6 @@ def train(args):
             taskName = args.alg + "." + args.env_id + "." + str(args.policy_hidden_size) + discrete + "." + str(
                 args.maxSampleTrajectories)
 
-            args.checkpoint_dir = "data/training"
-            args.checkpoint_dir = osp.join(args.checkpoint_dir, taskName)
             rank = MPI.COMM_WORLD.Get_rank()
             if rank != 0:
                 logger.set_level(logger.DISABLED)
@@ -128,8 +126,7 @@ def train(args):
             env.seed(workerseed)
             gym.logger.setLevel(logging.WARN)
 
-            task_name = get_task_name(args)
-            args.checkpoint_dir = osp.join("data/training", task_name)
+            args.checkpoint_dir = osp.join("data/training", taskName)
             trpo_mpi.learn(args,
                            env,
                            policy_fn,
@@ -137,7 +134,7 @@ def train(args):
                            max_iters=50_000,
                            vf_iters=5,
                            vf_stepsize=1e-3,
-                           task_name=task_name
+                           task_name=taskName
                            )
 
             env.close()

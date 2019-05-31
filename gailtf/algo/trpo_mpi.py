@@ -219,7 +219,7 @@ def learn(args,
             logger.log("set old parameter values to new parameter values")
             assign_old_eq_new()  # set old parameter values to new parameter values
 
-            with timed("computegrad"):
+            with timed("cg"):
                 *lossbefore, g = compute_lossandgrad(*args)
             lossbefore = allmean(np.array(lossbefore))
             g = allmean(g)

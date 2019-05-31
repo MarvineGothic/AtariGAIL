@@ -71,12 +71,7 @@ def printArgs(args):
 
 def get_task_name(args):
     discrete = (".D." if args.discrete else ".MD")
-    if args.alg == 'bc':
-        task_name = 'bc.' + args.env_id
-    elif args.alg == 'trpo':
-        return args.alg + "." + args.env_id + "." + str(args.policy_hidden_size) + discrete + "." + str(
-                args.maxSampleTrajectories)
-    elif args.alg == 'gail':
+    if args.task == 'train_gail':
         task_name = args.alg + "_gail."
         if args.pretrained:
             task_name += "with_pretrained."

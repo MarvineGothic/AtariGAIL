@@ -23,7 +23,7 @@ def main():
     # 'train_RL_expert', 'train_gail', 'RL_expert', 'human_expert', 'play_agent', 'evaluate'
 
     args.task = 'train_RL_expert'
-    # args.task = 'train_gail'
+    args.task = 'train_gail'
     # args.task = 'RL_expert'
     # args.task = 'human_expert'
     args.task = 'play_agent'
@@ -36,8 +36,10 @@ def main():
     # ================================ PATHS ==============================
 
     # args.expert_path = 'data/expert/human.MontezumaRevenge-ram-v0_MLP.50_traj_size_100.pkl'
+    args.expert_path = 'data/expert/stochastic.trpo.Boxing-ram-v0.MD.1500.score_100-0.pkl'
 
-    args.load_model_path = 'data/agent/Boxing/trpo_gail.stochastic.trpo.Boxing-ram-v0.MD.1500.score_100-0.pkl/trpo_gail.Boxing.g_step_3.d_step_1.policy_entcoeff_0.adversary_entcoeff_0.001-10200'
+    args.load_model_path = 'data/agent/Boxing/trpo_gail.stochastic.trpo.Boxing-ram-v0.MD.1500.score_100-0.pkl/' \
+                           'trpo_gail.Boxing.g_step_3.d_step_1.policy_entcoeff_0.adversary_entcoeff_0.001-10200'
 
     # ============================ PATCHES =================================
 
@@ -50,7 +52,6 @@ def main():
     if args.alg == 'train_gail':
         assert osp.exists(args.expert_path)
 
-    printArgs(args)
     train(args)
 
 
