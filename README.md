@@ -1,7 +1,5 @@
 # [AtariGAIL: Imitation of human player behavior using Generative Adversarial Imitation Learning]()
 
-By Sergiy Isakov
-
 ### Introduction
 
 This is my thesis project from IT University of Copenhagen. The main GAIL(Generative Adversarial Imitation Learning) algorithm
