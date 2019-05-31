@@ -26,7 +26,7 @@ def train(args):
 
     printArgs(args)
 
-    # ====================================================================================
+    # ================================================ ENVIRONMENT =====================================================
     isNes = False
     U.make_session(num_cpu=args.num_cpu).__enter__()
     set_global_seeds(args.seed)
@@ -47,32 +47,24 @@ def train(args):
     env.seed(args.seed)
     gym.logger.setLevel(logging.WARN)
 
+    discrete = (".D." if args.discrete else ".MD")
     # ============================================== PLAY AGENT ========================================================
     # ==================================================================================================================
     if args.task == 'play_agent':
         logger.log("Playing agent...")
         from environments.atari.atari_agent import playAtari
         agent = policy_fn(args, PI, env, reuse=False)
-        playAtari(env, agent, U, modelPath=args.load_model_path, fps=15, stochastic=args.stochastic_policy, zoom=2)
+        playAtari(env, agent, U, modelPath=args.load_model_path, fps=60, stochastic=args.stochastic_policy, zoom=2, delay=10)
         env.close()
         sys.exit()
 
     # ========================================== SAMPLE TRAJECTORY FROM RL =============================================
     # ==================================================================================================================
-    discrete = ""
-    if isinstance(env.action_space, Discrete):
-        discrete = ".DA"
-    elif isinstance(env.action_space, MultiDiscrete):
-        discrete = ".MD"
 
-    if args.task == 'sample_trajectory':
+    if args.task == 'RL_expert':
         logger.log("Sampling trajectory...")
-        taskName = args.alg + "." + args.env_id + discrete + "." + str(args.maxSampleTrajectories)
-
-        if args.stochastic_policy:
-            taskName = 'stochastic.' + taskName
-        else:
-            taskName = 'deterministic.' + taskName
+        stoch = 'stochastic.' if args.stochastic_policy else 'deterministic.'
+        taskName = stoch + "" + args.alg + "." + args.env_id + discrete + "." + str(args.maxSampleTrajectories)
         currentPolicy = policy_fn(args,
                                   PI,
                                   env,
@@ -92,7 +84,7 @@ def train(args):
 
     # ======================================== SAMPLE TRAJECTORY FROM HUMAN ============================================
     # ==================================================================================================================
-    if args.alg == 'human':
+    if args.task == 'human_expert':
         logger.log("Human plays...")
         taskName = "human." + args.env_id + "_" + args.networkName + "." + "50"
         args.checkpoint_dir = osp.join(args.checkpoint_dir, taskName)
@@ -109,13 +101,13 @@ def train(args):
         env.close()
         sys.exit()
 
-    # =========================================== TRAIN EXPERT ======================================================
+    # =========================================== TRAIN EXPERT =========================================================
     # ==================================================================================================================
 
-    if args.task == "train_expert":
-        logger.log("Training expert...")
-        # ============================================= TRAIN TRPO ========================================================
-        # ==================================================================================================================
+    if args.task == "train_RL_expert":
+        logger.log("Training RL expert...")
+        # ============================================= TRAIN TRPO =====================================================
+        # ==============================================================================================================
 
         if args.alg == 'trpo':
             from gailtf.baselines.trpo_mpi import trpo_mpi
@@ -156,74 +148,76 @@ def train(args):
 
     # =================================================== GAIL =========================================================
     # ==================================================================================================================
+    if args.task == 'train_gail' or args.task == 'evaluate':
 
-    task_name = get_task_name(args)
-    args.checkpoint_dir = osp.join(args.checkpoint_dir, task_name)
-    args.log_dir = osp.join(args.log_dir, task_name)
-    args.task_name = task_name
+        taskName = get_task_name(args)
+        args.checkpoint_dir = osp.join(args.checkpoint_dir, taskName)
+        args.log_dir = osp.join(args.log_dir, taskName)
+        args.task_name = taskName
 
-    dataset = Mujoco_Dset(expert_path=args.expert_path, ret_threshold=args.ret_threshold,
-                          traj_limitation=args.traj_limitation)
+        dataset = Mujoco_Dset(expert_path=args.expert_path, ret_threshold=args.ret_threshold,
+                              traj_limitation=args.traj_limitation)
 
-    # discriminator
-    if len(env.observation_space.shape) > 2:
-        from gailtf.network.adversary_cnn import TransitionClassifier
-    else:
-        if args.wasserstein:
-            from gailtf.network.w_adversary import TransitionClassifier
+        # discriminator
+        if len(env.observation_space.shape) > 2:
+            from gailtf.network.adversary_cnn import TransitionClassifier
         else:
-            from gailtf.network.adversary import TransitionClassifier
+            if args.wasserstein:
+                from gailtf.network.w_adversary import TransitionClassifier
+            else:
+                from gailtf.network.adversary import TransitionClassifier
 
-    discriminator = TransitionClassifier(env,
-                                         args.adversary_hidden_size,
-                                         entcoeff=args.adversary_entcoeff)
+        discriminator = TransitionClassifier(env,
+                                             args.adversary_hidden_size,
+                                             entcoeff=args.adversary_entcoeff)
 
-    pretrained_weight = None
-    if (args.pretrained and args.task == 'train_gail') or args.alg == 'bc':
-        # Pretrain with behavior cloning
-        from gailtf.algo import behavior_clone
-        if args.alg == 'bc' and args.task == 'evaluate':
-            behavior_clone.evaluate(args, env, policy_fn, args.load_model_path,
-                                    stochastic_policy=args.stochastic_policy)
-            sys.exit()
-        if args.load_model_path is None:
-            pretrained_weight = behavior_clone.learn(args,
-                                                     env,
-                                                     policy_fn,
-                                                     dataset)
-        if args.alg == 'bc':
-            sys.exit()
+        pretrained_weight = None
+        # pre-training with BC (optional):
+        if (args.pretrained and args.task == 'train_gail') or args.alg == 'bc':
+            # Pretrain with behavior cloning
+            from gailtf.algo import behavior_clone
+            if args.alg == 'bc' and args.task == 'evaluate':
+                behavior_clone.evaluate(args, env, policy_fn, args.load_model_path,
+                                        stochastic_policy=args.stochastic_policy)
+                sys.exit()
+            if args.load_model_path is None:
+                pretrained_weight = behavior_clone.learn(args,
+                                                         env,
+                                                         policy_fn,
+                                                         dataset)
+            if args.alg == 'bc':
+                sys.exit()
 
-    if args.alg == 'trpo':
-        # Set up for MPI seed
-        rank = MPI.COMM_WORLD.Get_rank()
-        if rank != 0:
-            logger.set_level(logger.DISABLED)
-        workerseed = args.seed + 10000 * MPI.COMM_WORLD.Get_rank()
-        set_global_seeds(workerseed)
-        env.seed(workerseed)
+        if args.alg == 'trpo':
+            # Set up for MPI seed
+            rank = MPI.COMM_WORLD.Get_rank()
+            if rank != 0:
+                logger.set_level(logger.DISABLED)
+            workerseed = args.seed + 10000 * MPI.COMM_WORLD.Get_rank()
+            set_global_seeds(workerseed)
+            env.seed(workerseed)
 
-        if args.wasserstein:
-            from gailtf.algo import w_trpo_mpi as trpo
-        else:
+            # if args.wasserstein:
+            #     from gailtf.algo import w_trpo_mpi as trpo
+            # else:
             from gailtf.algo import trpo_mpi as trpo
 
-        if args.task == 'train_gail':
-            trpo.learn(args,
-                       env,
-                       policy_fn,
-                       discriminator,
-                       dataset,
-                       pretrained_weight=pretrained_weight,
-                       cg_damping=0.1,
-                       vf_iters=5,
-                       vf_stepsize=1e-3
-                       )
-        elif args.task == 'evaluate':
-            trpo.evaluate(env, policy_fn, args.load_model_path, timesteps_per_batch=1024,
-                          number_trajs=10, stochastic_policy=args.stochastic_policy)
-        else:
-            raise NotImplementedError
+            if args.task == 'train_gail':
+                trpo.learn(args,
+                           env,
+                           policy_fn,
+                           discriminator,
+                           dataset,
+                           pretrained_weight=pretrained_weight,
+                           cg_damping=0.1,
+                           vf_iters=5,
+                           vf_stepsize=1e-3
+                           )
+            elif args.task == 'evaluate':
+                trpo.evaluate(env, policy_fn, args.load_model_path, timesteps_per_batch=1024,
+                              number_trajs=10, stochastic_policy=args.stochastic_policy)
+            else:
+                raise NotImplementedError
 
-    env.close()
-    sys.exit()
+        env.close()
+        sys.exit()

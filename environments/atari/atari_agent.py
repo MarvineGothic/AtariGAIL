@@ -115,8 +115,8 @@ def playAtari(env,
                 gamesTotal, wins, losses, ties, totalPlayer, totalOpponent))
             print(colorize(msg, color='red'))
 
-            if gamesTotal == 3:
-                running = False
+            # if gamesTotal == 3:
+            #     running = False
 
             envDone = False
             observation = env.reset()

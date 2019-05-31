@@ -31,7 +31,7 @@ def argsParser():
     parser.add_argument('--max_to_keep', help='how many saves to keep in a directory', default=10)
     # Task
     parser.add_argument('--task', type=str,
-                        choices=['train_expert', 'train_gail', 'sample_trajectory', 'play_agent', 'evaluate'],
+                        choices=['train_RL_expert', 'train_gail', 'RL_expert', 'human_expert', 'play_agent', 'evaluate'],
                         default='train_gail')
     parser.add_argument('--visualize', default=False)
     parser.add_argument('--task_name', default='taskName')
@@ -49,7 +49,7 @@ def argsParser():
     parser.add_argument('--clip_weights', type=bool, default=False)
     parser.add_argument('--wasserstein', type=bool, default=False)
     # Algorithms Configuration
-    parser.add_argument('--alg', type=str, choices=['bc', 'trpo', 'ppo', 'human'], default='trpo')
+    parser.add_argument('--alg', type=str, choices=['bc', 'trpo'], default='trpo')
     parser.add_argument('--max_kl', type=float, default=0.01)
     parser.add_argument('--policy_entcoeff', help='entropy coefficient of policy', type=float, default=0)
     parser.add_argument('--adversary_entcoeff', help='entropy coefficient of discriminator', type=float, default=1e-3)
@@ -70,24 +70,18 @@ def printArgs(args):
 
 
 def get_task_name(args):
+    discrete = (".D." if args.discrete else ".MD")
     if args.alg == 'bc':
-        task_name = 'behavior_cloning.'
-        if args.traj_limitation != np.inf:
-            task_name += "traj_limitation_%d." % args.traj_limitation
-        task_name += args.env_id
-    else:
+        task_name = 'bc.' + args.env_id
+    elif args.alg == 'trpo':
+        return args.alg + "." + args.env_id + "." + str(args.policy_hidden_size) + discrete + "." + str(
+                args.maxSampleTrajectories)
+    elif args.alg == 'gail':
         task_name = args.alg + "_gail."
         if args.pretrained:
             task_name += "with_pretrained."
-        if args.traj_limitation != np.inf:
-            task_name += "traj_limitation_%d." % args.traj_limitation
         task_name += args.env_id
-        if args.ret_threshold > 0:
-            task_name += ".return_threshold_%d" % args.ret_threshold
-
-        task_name = task_name + "." + str(args.policy_hidden_size) + (
-            ".D." if args.discrete else ".MD") + (
-                        "." + args.expert_path.split('.')[-2] if args.expert_path is not None else "")
+        task_name = task_name + "." + str(args.policy_hidden_size) + discrete
 
         if args.wasserstein:
             task_name = task_name + "_W"
@@ -97,6 +91,8 @@ def get_task_name(args):
             suffix = args.expert_path.split('.')
             if len(suffix) > 4:
                 task_name += "." + suffix[-2]
+    else:
+        return NotImplementedError
     return task_name
 
 
@@ -205,10 +201,7 @@ def sample_trajectory(load_model_path, traj_gen, task_name, sample_stochastic, m
 
     sample_ep_rets = [traj["ep_ret"] for traj in sample_trajs]
     logger.log("Average total return: %f" % (sum(sample_ep_rets) / len(sample_ep_rets)))
-    if sample_stochastic:
-        task_name = 'stochastic.' + task_name
-    else:
-        task_name = 'deterministic.' + task_name
+
     pkl.dump(sample_trajs, open(task_name + ".pkl", "wb"))
 
 
