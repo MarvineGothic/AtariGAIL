@@ -11,6 +11,7 @@ def main():
     args.policy_hidden_size = 100  # policy's size of hidden layers
     args.adversary_hidden_size = 100  # discriminator's size of hidden layers
     args.stochastic_policy = True  # type of environment
+    args.pretrained = False  # use BC to pre-train weights
 
     if '-ram-' in args.env_id:
         args.networkName = 'MLP'
@@ -20,13 +21,13 @@ def main():
         args.trajectoriesPerBatch = 512
 
     # ================================ TASK ==============================
-    # 'train_RL_expert', 'train_gail', 'RL_expert', 'human_expert', 'play_agent', 'evaluate'
+    # 'train_RL_expert', 'train_gail', 'RL_expert', 'human_expert', 'play_agent'
 
     args.task = 'train_RL_expert'
+    args.task = 'RL_expert'
+    args.task = 'human_expert'
     args.task = 'train_gail'
-    # args.task = 'RL_expert'
-    # args.task = 'human_expert'
-    args.task = 'play_agent'
+    # args.task = 'play_agent'
 
     # ============================== ALGORITHM ============================
     # 'bc', 'trpo'
@@ -35,16 +36,14 @@ def main():
 
     # ================================ PATHS ==============================
 
-    # args.expert_path = 'data/expert/human.MontezumaRevenge-ram-v0_MLP.50_traj_size_100.pkl'
     args.expert_path = 'data/expert/stochastic.trpo.Boxing-ram-v0.MD.1500.score_100-0.pkl'
 
-    args.load_model_path = 'data/agent/Boxing/trpo_gail.stochastic.trpo.Boxing-ram-v0.MD.1500.score_100-0.pkl/' \
-                           'trpo_gail.Boxing.g_step_3.d_step_1.policy_entcoeff_0.adversary_entcoeff_0.001-10200'
+    # args.load_model_path = 'data/training/trpo.Boxing-ram-v0.100.MD.1500/trpo.Boxing-ram-v0.100.MD.1500-0'
 
     # ============================ PATCHES =================================
 
     if args.task == 'RL_expert':
-        args.maxSampleTrajectories = 1500  # set number of samples for RL expert
+        args.maxSampleTrajectories = 1  # set number of samples for RL expert
 
     if args.alg == 'bc':
         args.task = 'train_gail'

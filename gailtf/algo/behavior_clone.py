@@ -64,7 +64,7 @@ def learn(args,
     U.initialize()
     adam.sync()
     logger.log("Pretraining with Behavior Cloning...")
-    for iter_so_far in tqdm(range(int(max_iters))):
+    for iter_so_far in tqdm(range(int(max_iters + 1))):
         ob_expert, ac_expert = dataset.get_next_batch(optim_batch_size, 'train')
         loss, g = lossandgrad(ob_expert, ac_expert, True)
         adam.update(g, optim_stepsize)

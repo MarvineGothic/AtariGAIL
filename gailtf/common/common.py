@@ -31,8 +31,7 @@ def argsParser():
     parser.add_argument('--max_to_keep', help='how many saves to keep in a directory', default=10)
     # Task
     parser.add_argument('--task', type=str,
-                        choices=['train_RL_expert', 'train_gail', 'RL_expert', 'human_expert', 'play_agent',
-                                 'evaluate'],
+                        choices=['train_RL_expert', 'train_gail', 'RL_expert', 'human_expert', 'play_agent'],
                         default='train_gail')
     parser.add_argument('--visualize', default=False)
     parser.add_argument('--task_name', default='taskName')

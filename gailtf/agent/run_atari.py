@@ -26,7 +26,6 @@ def train(args):
     printArgs(args)
 
     # ================================================ ENVIRONMENT =====================================================
-    isNes = False
     U.make_session(num_cpu=args.num_cpu).__enter__()
     set_global_seeds(args.seed)
 
@@ -42,7 +41,7 @@ def train(args):
 
     env.metadata = 0
     env = bench.Monitor(env, logger.get_dir() and
-                        osp.join(logger.get_dir(), "monitor.json"))
+                        osp.join(logger.get_dir(), "monitor.json"), allow_early_resets=True)
     env.seed(args.seed)
     gym.logger.setLevel(logging.WARN)
 
@@ -53,7 +52,7 @@ def train(args):
         logger.log("Playing agent...")
         from environments.atari.atari_agent import playAtari
         agent = policy_fn(args, PI, env, reuse=False)
-        playAtari(env, agent, U, modelPath=args.load_model_path, fps=60, stochastic=args.stochastic_policy, zoom=2, delay=10)
+        playAtari(env, agent, U, modelPath=args.load_model_path, fps=15, stochastic=args.stochastic_policy, zoom=2, delay=10)
         env.close()
         sys.exit()
 
@@ -64,6 +63,7 @@ def train(args):
         logger.log("Sampling trajectory...")
         stoch = 'stochastic.' if args.stochastic_policy else 'deterministic.'
         taskName = stoch + "" + args.alg + "." + args.env_id + discrete + "." + str(args.maxSampleTrajectories)
+        taskName = osp.join("data/expert", taskName)
         currentPolicy = policy_fn(args,
                                   PI,
                                   env,
@@ -85,28 +85,22 @@ def train(args):
     # ==================================================================================================================
     if args.task == 'human_expert':
         logger.log("Human plays...")
-        taskName = "human." + args.env_id + "_" + args.networkName + "." + "50"
+        taskName = "human." + args.env_id + "_" + args.networkName + "." + "50.pkl"
         args.checkpoint_dir = osp.join(args.checkpoint_dir, taskName)
-        taskName = taskName + ".pkl"
+        taskName = osp.join("data/expert", taskName)
 
-        if isNes:
-            from environments.nes_py.app.play_human import playNES
-            sampleTrajectories = playNES(env, fps=15, taskName=taskName)
-        else:
-            from environments.atari.atari_human import playAtari
-            sampleTrajectories = playAtari(env, fps=15, zoom=2, taskName=taskName)
+        from environments.atari.atari_human import playAtari
+        sampleTrajectories = playAtari(env, fps=15, zoom=2, taskName=taskName)
 
         pkl.dump(sampleTrajectories, open(taskName, "wb"))
         env.close()
         sys.exit()
 
-    # =========================================== TRAIN EXPERT =========================================================
+    # =========================================== TRAIN RL EXPERT ======================================================
     # ==================================================================================================================
 
     if args.task == "train_RL_expert":
         logger.log("Training RL expert...")
-        # ============================================= TRAIN TRPO =====================================================
-        # ==============================================================================================================
 
         if args.alg == 'trpo':
             from gailtf.baselines.trpo_mpi import trpo_mpi
@@ -144,7 +138,7 @@ def train(args):
 
     # =================================================== GAIL =========================================================
     # ==================================================================================================================
-    if args.task == 'train_gail' or args.task == 'evaluate':
+    if args.task == 'train_gail':
 
         taskName = get_task_name(args)
         args.checkpoint_dir = osp.join(args.checkpoint_dir, taskName)
@@ -172,10 +166,6 @@ def train(args):
         if (args.pretrained and args.task == 'train_gail') or args.alg == 'bc':
             # Pretrain with behavior cloning
             from gailtf.algo import behavior_clone
-            if args.alg == 'bc' and args.task == 'evaluate':
-                behavior_clone.evaluate(args, env, policy_fn, args.load_model_path,
-                                        stochastic_policy=args.stochastic_policy)
-                sys.exit()
             if args.load_model_path is None:
                 pretrained_weight = behavior_clone.learn(args,
                                                          env,
@@ -198,22 +188,18 @@ def train(args):
             # else:
             from gailtf.algo import trpo_mpi as trpo
 
-            if args.task == 'train_gail':
-                trpo.learn(args,
-                           env,
-                           policy_fn,
-                           discriminator,
-                           dataset,
-                           pretrained_weight=pretrained_weight,
-                           cg_damping=0.1,
-                           vf_iters=5,
-                           vf_stepsize=1e-3
-                           )
-            elif args.task == 'evaluate':
-                trpo.evaluate(env, policy_fn, args.load_model_path, timesteps_per_batch=1024,
-                              number_trajs=10, stochastic_policy=args.stochastic_policy)
-            else:
-                raise NotImplementedError
+            trpo.learn(args,
+                       env,
+                       policy_fn,
+                       discriminator,
+                       dataset,
+                       pretrained_weight=pretrained_weight,
+                       cg_damping=0.1,
+                       vf_iters=5,
+                       vf_stepsize=1e-3
+                       )
+        else:
+            raise NotImplementedError
 
         env.close()
         sys.exit()

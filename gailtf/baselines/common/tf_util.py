@@ -290,7 +290,7 @@ _SAVER_CACHE = {}  # name -> saver
 
 
 def save_state(fname, var_list=None, counter=None, max_to_keep=10):
-    print("Sava state - max to keep: " + str(max_to_keep))
+    print("Save state - max to keep: " + str(max_to_keep))
     os.makedirs(os.path.dirname(fname), exist_ok=True)
 
     saver = get_saver(var_list=var_list, max_to_keep=max_to_keep)
