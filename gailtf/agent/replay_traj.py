@@ -143,6 +143,7 @@ def replayOBS(env, modelPath, transpose=True, fps=15, zoom=None):
         trajectories = pkl.load(rfp)
 
     obs_s = trajectories[0]['ob'][0]
+    # img = env.unwrapped.ale.getScreenRGB2()
     # assert type(obs_s) == Box
     assert len(obs_s.shape) == 2 or (len(obs_s.shape) == 3 and obs_s.shape[2] in [1, 3])
 
@@ -169,13 +170,13 @@ def replayOBS(env, modelPath, transpose=True, fps=15, zoom=None):
     wins = losses = ties = gamesTotal = totalPlayer = totalOpponent = 0
 
     while running:
-        pygame.event.get()
         trl = len(trajectories)
         for i in range(trl):
             print("\nRunning trajectory {}".format(i))
             print("Length {}".format(len(trajectories[i]['ob'])))
 
             for obs in tqdm(trajectories[i]['ob']):
+                pygame.event.get()
                 if obs is not None:
                     if len(obs.shape) == 2:
                         obs = obs[:, :, None]
@@ -190,9 +191,8 @@ def replayOBS(env, modelPath, transpose=True, fps=15, zoom=None):
 
 if __name__ == '__main__':
     mP = '../../data/expert/human.MontezumaRevenge-ram-v0_MLP.50_traj_size_100.pkl'
-    #replayOBS(mP)
-    #env = make_atari('MontezumaRevengeNoFrameskip-v4')
+    # replayOBS(mP)
     env = gym.make('MontezumaRevenge-ram-v0')
     env = ActionWrapper(env, True)
 
-    replayOBS(env, mP)
+    replayOBS(env, "../../Montezuma.pkl")
